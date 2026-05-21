@@ -48,10 +48,16 @@ on:
       language:
         required: true
         type: string
+      default_runs_on:
+        required: true
+        type: string
+      debug:
+        required: false
+        type: string
 
 jobs:
   prepare_pipeline_scan:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.default_runs_on) }}
     name: prepare pipeline scan
     outputs:
       matrix_files: ${{ steps.get-files.outputs.matrix_files }} 
@@ -77,7 +83,7 @@ jobs:
         shell: bash
 
   pipeline_scan:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.default_runs_on) }}
     needs: prepare_pipeline_scan
     strategy:
       matrix:
@@ -104,7 +110,7 @@ jobs:
       - name: Veracode Pipeline-Scan
         if: always()
         id: pipeline-scan
-        uses: veracode/Veracode-pipeline-scan-action@v1.0.20
+        uses: veracode/Veracode-pipeline-scan-action@v1.0.21
         with:
           vid: ${{ secrets.VERACODE_API_ID }}
           vkey: ${{ secrets.VERACODE_API_KEY }}
@@ -117,7 +123,7 @@ jobs:
           json_output_file: ${{ strategy.job-index }}-results.json
           filtered_json_output_file: ${{ strategy.job-index }}-filtered_results.json
           artifact_name: ${{ matrix.file }}
-          debug: 1
+          debug: ${{ inputs.debug == true && '1' || '0' }}
           workflow_app: true
     
       - name: Veracode Pipeline Results
@@ -160,7 +166,7 @@ jobs:
           commitHash: ${{ inputs.sha }}
 
   update-checks-status:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJson(inputs.default_runs_on) }}
     needs: pipeline_scan
     if: always()
     steps:
